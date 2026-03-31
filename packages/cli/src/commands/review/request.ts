@@ -1,8 +1,11 @@
 import { Command, Args, Flags } from '@oclif/core';
-import { readDocument } from '@gitlaw/core';
-import { writeFile } from 'node:fs/promises';
-import { join } from 'node:path';
-import yaml from 'js-yaml';
+import { requestReviewForDocument, loadAuditLog, saveAuditLog } from '@gitlaw/core';
+import { execFileSync } from 'node:child_process';
+import { join, resolve } from 'node:path';
+
+function getHeadCommit(repoDir: string): string {
+  return execFileSync('git', ['rev-parse', 'HEAD'], { cwd: repoDir, encoding: 'utf-8' }).trim();
+}
 
 export default class ReviewRequest extends Command {
   static override description = 'Request review for a document';
@@ -17,14 +20,33 @@ export default class ReviewRequest extends Command {
 
   async run(): Promise<void> {
     const { args, flags } = await this.parse(ReviewRequest);
-    const docDir = join(process.cwd(), args.document);
-    const doc = await readDocument(docDir);
+    const repoDir = process.cwd();
+    const documentDir = join(repoDir, args.document);
+    const commit = getHeadCommit(repoDir);
 
     const reviewers = flags.reviewers.split(',').map(r => r.trim());
-    doc.tracking.workflow_state.current_reviewers = reviewers;
-    doc.meta.status = 'review';
-    await writeFile(join(docDir, 'document.yaml'), yaml.dump(doc.meta));
-    await writeFile(join(docDir, '.gitlaw'), yaml.dump(doc.tracking));
+    const result = await requestReviewForDocument({
+      repoDir,
+      documentKey: args.document,
+      documentDir,
+      reviewers,
+      requester: process.env.USER ?? 'unknown',
+      commit,
+    });
+
+    const log = await loadAuditLog(repoDir);
+    log.append({
+      actor: process.env.USER ?? 'unknown',
+      event: 'review_requested',
+      document: args.document,
+      commit,
+      details: {
+        reviewers,
+        status: result.status,
+        documentDir: resolve(documentDir),
+      },
+    });
+    await saveAuditLog(repoDir, log);
 
     this.log(`Review requested from: ${reviewers.join(', ')}`);
   }

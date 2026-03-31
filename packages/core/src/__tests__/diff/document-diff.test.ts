@@ -30,10 +30,26 @@ describe('diffSections', () => {
     expect(removed[0].clauseId).toBe('gone');
   });
 
+  it('detects moved clauses when order changes', () => {
+    const oldParsed = parseClauses('{{clause:a}}\nA\n{{/clause}}\n\n{{clause:b}}\nB\n{{/clause}}');
+    const newParsed = parseClauses('{{clause:b}}\nB\n{{/clause}}\n\n{{clause:a}}\nA\n{{/clause}}');
+    const diff = diffSections(oldParsed, newParsed);
+    const moved = diff.changes.filter(c => c.type === 'moved' && c.clauseId);
+    expect(moved.length).toBeGreaterThan(0);
+  });
+
   it('detects paragraph changes in unmarked text', () => {
     const oldParsed = parseClauses('Paragraph one.\n\nParagraph two.');
     const newParsed = parseClauses('Paragraph one.\n\nParagraph changed.');
     const diff = diffSections(oldParsed, newParsed);
-    expect(diff.changes.length).toBeGreaterThan(0);
+    expect(diff.changes.some(c => c.type === 'modified')).toBe(true);
+  });
+
+  it('detects moved paragraphs in unmarked text', () => {
+    const oldParsed = parseClauses('Alpha.\n\nBeta.\n\nGamma.');
+    const newParsed = parseClauses('Gamma.\n\nAlpha.\n\nBeta.');
+    const diff = diffSections(oldParsed, newParsed);
+    expect(diff.changes.some(c => c.type === 'moved' && !c.clauseId)).toBe(true);
   });
 });
+

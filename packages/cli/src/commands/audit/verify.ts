@@ -1,5 +1,5 @@
 import { Command } from '@oclif/core';
-import { loadAuditLog } from './log.js';
+import { loadAuditLog } from '@gitlaw/core';
 
 export default class AuditVerify extends Command {
   static override description = 'Verify audit log integrity';

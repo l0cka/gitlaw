@@ -17,11 +17,12 @@ export type { WordChange } from './diff/word-diff.js';
 
 // Workflow
 export { canTransition, transition } from './workflow/state-machine.js';
-export { ReviewManager } from './workflow/reviews.js';
+export { ReviewManager, loadReviewManager, saveReviewManager } from './workflow/reviews.js';
+export { requestReviewForDocument, approveReviewForDocument, rejectReviewForDocument } from './workflow/service.js';
 export type { ReviewRequest, ReviewRecord } from './workflow/types.js';
 
 // Audit
-export { AuditLog } from './audit/audit-log.js';
+export { AuditLog, loadAuditLog, saveAuditLog } from './audit/audit-log.js';
 export type { AuditEntry, AuditEventType } from './audit/types.js';
 
 // Clause library

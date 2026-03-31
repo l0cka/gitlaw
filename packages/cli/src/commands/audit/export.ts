@@ -1,6 +1,6 @@
 import { Command, Args, Flags } from '@oclif/core';
 import { writeFile } from 'node:fs/promises';
-import { loadAuditLog } from './log.js';
+import { loadAuditLog } from '@gitlaw/core';
 
 export default class AuditExport extends Command {
   static override description = 'Export audit log';

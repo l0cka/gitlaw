@@ -1,5 +1,9 @@
 import { describe, it, expect } from 'vitest';
-import { AuditLog } from '../../audit/audit-log.js';
+import { mkdtemp, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { execFileSync } from 'node:child_process';
+import { AuditLog, loadAuditLog, saveAuditLog } from '../../audit/audit-log.js';
 
 describe('AuditLog', () => {
   it('appends an entry with hash', () => {
@@ -46,4 +50,23 @@ describe('AuditLog', () => {
     expect(restored.verify()).toBe(true);
     expect(restored.entries).toHaveLength(1);
   });
+
+  it('persists and loads audit log from git notes', async () => {
+    const repoDir = await mkdtemp(join(tmpdir(), 'gitlaw-audit-notes-'));
+    execFileSync('git', ['init', repoDir]);
+    execFileSync('git', ['config', 'user.email', 'test@example.com'], { cwd: repoDir });
+    execFileSync('git', ['config', 'user.name', 'Test User'], { cwd: repoDir });
+    await writeFile(join(repoDir, '.gitignore'), 'node_modules\n');
+    execFileSync('git', ['add', '.gitignore'], { cwd: repoDir });
+    execFileSync('git', ['commit', '-m', 'init'], { cwd: repoDir });
+
+    const log = new AuditLog();
+    log.append({ actor: 'alice', event: 'document_created', document: 'nda', commit: 'abc', details: {} });
+    await saveAuditLog(repoDir, log);
+
+    const reloaded = await loadAuditLog(repoDir);
+    expect(reloaded.entries).toHaveLength(1);
+    expect(reloaded.verify()).toBe(true);
+  });
 });
+

@@ -1,8 +1,8 @@
 import { Dashboard } from '@/components/dashboard';
+import { listDocuments } from '@/lib/documents';
 
-export default function Home() {
-  // Placeholder — will be wired to gitlaw core in local/remote mode
-  const documents: { name: string; title: string; type: string; status: string }[] = [];
+export default async function Home() {
+  const documents = await listDocuments();
 
   return (
     <main>

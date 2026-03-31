@@ -1,7 +1,10 @@
 import { createHash } from 'node:crypto';
 import type { AuditEntry, AuditEventType } from './types.js';
+import { getHeadCommit, readGitNote, writeGitNote } from '../git/notes.js';
 
 interface AppendInput { actor: string; event: AuditEventType; document: string; commit: string; details: Record<string, unknown>; }
+
+export const AUDIT_NOTES_REF = 'refs/notes/gitlaw-audit';
 
 function hashEntry(entry: Omit<AuditEntry, 'id'>): string {
   const content = JSON.stringify({ prev: entry.prev, timestamp: entry.timestamp, actor: entry.actor, event: entry.event, document: entry.document, commit: entry.commit, details: entry.details });
@@ -42,3 +45,15 @@ export class AuditLog {
     return log;
   }
 }
+
+export async function loadAuditLog(repoDir: string): Promise<AuditLog> {
+  const head = await getHeadCommit(repoDir);
+  const raw = await readGitNote(repoDir, AUDIT_NOTES_REF, head);
+  return raw ? AuditLog.deserialize(raw) : new AuditLog();
+}
+
+export async function saveAuditLog(repoDir: string, log: AuditLog): Promise<void> {
+  const head = await getHeadCommit(repoDir);
+  await writeGitNote(repoDir, AUDIT_NOTES_REF, head, log.serialize());
+}
+

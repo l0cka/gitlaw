@@ -31,4 +31,23 @@ describe('ReviewManager', () => {
     mgr.submitReview({ document: 'contracts/nda', reviewer: 'bob', decision: 'approved', commit: 'abc123' });
     expect(mgr.isFullyApproved('contracts/nda')).toBe(true);
   });
+
+  it('marks requests as completed', () => {
+    const mgr = new ReviewManager();
+    mgr.requestReview({ document: 'contracts/nda', reviewers: ['alice'], requester: 'charlie', commit: 'abc123' });
+    mgr.completeRequest('contracts/nda');
+    expect(mgr.getRequest('contracts/nda')?.status).toBe('completed');
+  });
+
+  it('serializes and deserializes review state', () => {
+    const mgr = new ReviewManager();
+    mgr.requestReview({ document: 'contracts/nda', reviewers: ['alice'], requester: 'charlie', commit: 'abc123' });
+    mgr.submitReview({ document: 'contracts/nda', reviewer: 'alice', decision: 'approved', commit: 'abc123' });
+
+    const json = mgr.serialize();
+    const restored = ReviewManager.deserialize(json);
+    expect(restored.getRequest('contracts/nda')?.reviewers).toEqual(['alice']);
+    expect(restored.getReviews('contracts/nda')).toHaveLength(1);
+  });
 });
+

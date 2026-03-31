@@ -1,8 +1,11 @@
 import { Command, Args, Flags } from '@oclif/core';
-import { readDocument } from '@gitlaw/core';
-import { writeFile } from 'node:fs/promises';
+import { rejectReviewForDocument, loadAuditLog, saveAuditLog } from '@gitlaw/core';
+import { execFileSync } from 'node:child_process';
 import { join } from 'node:path';
-import yaml from 'js-yaml';
+
+function getHeadCommit(repoDir: string): string {
+  return execFileSync('git', ['rev-parse', 'HEAD'], { cwd: repoDir, encoding: 'utf-8' }).trim();
+}
 
 export default class ReviewReject extends Command {
   static override description = 'Reject a document review';
@@ -17,14 +20,33 @@ export default class ReviewReject extends Command {
 
   async run(): Promise<void> {
     const { args, flags } = await this.parse(ReviewReject);
-    const docDir = join(process.cwd(), args.document);
-    const doc = await readDocument(docDir);
+    const repoDir = process.cwd();
+    const documentDir = join(repoDir, args.document);
+    const reviewer = process.env.USER ?? 'unknown';
+    const commit = getHeadCommit(repoDir);
 
-    doc.meta.status = 'draft';
-    doc.tracking.workflow_state.current_reviewers = [];
-    doc.tracking.workflow_state.approvals = [];
-    await writeFile(join(docDir, 'document.yaml'), yaml.dump(doc.meta));
-    await writeFile(join(docDir, '.gitlaw'), yaml.dump(doc.tracking));
+    await rejectReviewForDocument({
+      repoDir,
+      documentKey: args.document,
+      documentDir,
+      reviewer,
+      commit,
+      reason: flags.reason,
+    });
+
+    const log = await loadAuditLog(repoDir);
+    log.append({
+      actor: reviewer,
+      event: 'review_decision',
+      document: args.document,
+      commit,
+      details: {
+        decision: 'rejected',
+        reason: flags.reason,
+        status: 'draft',
+      },
+    });
+    await saveAuditLog(repoDir, log);
 
     this.log(`Rejected: ${flags.reason}`);
   }

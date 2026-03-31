@@ -1,19 +1,5 @@
 import { Command, Args } from '@oclif/core';
-import { AuditLog } from '@gitlaw/core';
-import { readFile } from 'node:fs/promises';
-import { existsSync } from 'node:fs';
-import { join } from 'node:path';
-
-export function getAuditLogPath(baseDir: string): string {
-  return join(baseDir, '.gitlaw', 'audit.json');
-}
-
-export async function loadAuditLog(baseDir: string): Promise<AuditLog> {
-  const path = getAuditLogPath(baseDir);
-  if (!existsSync(path)) return new AuditLog();
-  const json = await readFile(path, 'utf-8');
-  return AuditLog.deserialize(json);
-}
+import { loadAuditLog } from '@gitlaw/core';
 
 export default class AuditLogCmd extends Command {
   static override description = 'View audit log for a document';
